@@ -12,15 +12,6 @@ vim.g.mapleader = " "
 vim.g.netrw_sort_options = "i"
 vim.opt.listchars ="tab:>-"
 vim.opt.shortmess:remove("S")
-vim.api.nvim_create_autocmd("FileType", {
-  pattern = { "typescriptreact", "typescript" },
-  callback = function()
-    vim.opt_local.shiftwidth = 2
-    vim.opt_local.tabstop = 2
-    vim.opt_local.expandtab = true
-    vim.opt_local.softtabstop = 2
-  end,
-})
 
 local nnoremap = require("personal.keymap").nnoremap
 local vnoremap = require("personal.keymap").vnoremap
@@ -37,8 +28,6 @@ nnoremap("<C-k>", "<C-u>zz")
 nnoremap("<C-j>", "<C-d>zz")
 vnoremap("<C-k>", "<C-u>zz")
 vnoremap("<C-j>", "<C-d>zz")
---vnoremap("dj", "djzz")
---nnoremap("dk", "dkzz")
 vnoremap("}", "}zz")
 nnoremap("}", "}zz")
 vnoremap("{", "{zz")
@@ -56,7 +45,11 @@ nnoremap("y", "\"+y")
 vnoremap("y", "\"+y")
 nnoremap("<leader>c",[[<cmd>let @/='' | echo<cr>]])
 nnoremap("<leader>d",[[<cmd>bd<CR>]])
+nnoremap("<leader>w",[[<cmd>w<CR>]])
 vim.api.nvim_set_keymap('n', '<leader>fb', [[<cmd>lua require('telescope.builtin').buffers()<CR>]], { noremap = true, silent = true })
+
+
+
 
 -- Highlight the cursor line
 vim.api.nvim_exec([[
@@ -65,7 +58,6 @@ vim.api.nvim_exec([[
 ]], false)
 
 --Highlight yanked lines 
---vim.cmd([[highlight hl_yank guibg=DarkBlue ctermbg=DarkBlue gui=NONE cterm=NONE]])
 vim.cmd([[highlight hl_yank guibg=yellow ctermbg=yellow]])
 vim.api.nvim_exec([[
   augroup highlight_yank
@@ -73,8 +65,6 @@ vim.api.nvim_exec([[
     autocmd TextYankPost * silent! lua require'vim.highlight'.on_yank({ higroup = "hl_yank", timeout = 100 })
   augroup END
 ]], false)
-
-
 
 -- PLUGGINS
 vim.cmd [[
@@ -84,15 +74,15 @@ local Plug = vim.fn['plug#']
 
 vim.call('plug#begin', '~/.config/nvim/plugged')
 
-    Plug('lukas-reineke/indent-blankline.nvim', { ['tag'] = 'v3.0.0' })
-    Plug 'glepnir/lspsaga.nvim'
-    Plug 'windwp/nvim-ts-autotag'
-    Plug 'ray-x/lsp_signature.nvim' -- display function arg info while in insert mode
+    Plug 'ray-x/lsp_signature.nvim'
+    Plug 'mbbill/undotree'
     Plug 'williamboman/mason.nvim'
+    Plug 'glepnir/lspsaga.nvim'
     Plug 'neovim/nvim-lspconfig'
     Plug 'L3MON4D3/LuaSnip'
-    Plug 'VonHeikemen/lsp-zero.nvim'
+    Plug "VonHeikemen/lsp-zero.nvim"
     Plug 'hrsh7th/nvim-cmp'
+    Plug 'wfxr/minimap.vim'
     Plug 'hrsh7th/vim-vsnip'
     Plug 'hrsh7th/vim-vsnip-integ'
     Plug 'hrsh7th/cmp-buffer'
@@ -101,12 +91,13 @@ vim.call('plug#begin', '~/.config/nvim/plugged')
     Plug 'nvim-lua/plenary.nvim'
     Plug 'ThePrimeagen/harpoon'
     Plug 'nvim-telescope/telescope.nvim'
+    Plug 'nvim-treesitter/nvim-treesitter'
     Plug 'projekt0n/github-nvim-theme'
     Plug 'https://github.com/vim-scripts/netrw.vim'
     Plug 'vim-airline/vim-airline'  --for top bar and bottom bar 
     Plug 'vim-airline/vim-airline-themes' --themes for airline plugin
     Plug 'mfussenegger/nvim-jdtls' -- java lsp
-    Plug 'nvim-treesitter/nvim-treesitter'
+    Plug 'elixir-editors/vim-elixir' -- elixir lsp
 
 vim.call('plug#end')
 
@@ -126,55 +117,26 @@ vim.cmd("let g:airline#extensions#tabline#tabs_label = 't'")
 vim.cmd('colorscheme github_dark_default')
 
 --treesitter
-local treesitter_config = require('nvim-treesitter.configs')
-treesitter_config.setup {
-  ensure_installed = { "xml", "vim", "html", "vimdoc", "query", "robot", "cpp", "javascript", "python", "c", "lua", "rust", "java"},
-  ignore_install = {},
-  sync_install = false,
-  auto_install = true,
-  textobjects = {
-    select = {
-      enable = true,
-      lookahead = true, -- Automatically jump to next match
-      keymaps = {
-        ["ib"] = "@block.inner",   -- Select inside a tag's content
-        ["ab"] = "@block.outer",   -- Select the entire tag block
-        ["it"] = "@tag.inner",     -- Select inside tag name
-        ["at"] = "@tag.outer",     -- Select the full tag
-      },
+require('nvim-treesitter.configs').setup {
+    ensure_installed = { "typescript", "xml", "vim", "vimdoc", "query", "robot", "cpp", "elixir", "javascript", "python", "c", "lua", "rust", "java" },
+    ignore_install = {},
+    sync_install = false,
+    auto_install = true,
+    highlight = {
+        enable = true,
+        --additional_vim_regex_highlighting = false,
+        disable = function(_ , buf)
+          local max_lines = 1000  -- Adjust this number based on performance
+          local line_count = vim.api.nvim_buf_line_count(buf)
+          if line_count > max_lines then
+            return true
+          end
+        end,
     },
-  },
-  highlight = {
-    enable = true,
-    disable = function(_, buf)
-      local max_lines = 1000  -- Adjust this number based on performance
-      local line_count = vim.api.nvim_buf_line_count(buf)
-      if line_count > max_lines then
-        return true
-      end
-    end,
-  },
+    indent = {
+        enable = true, -- Enable indentation based on Treesitter
+    },
 }
-
---auto complete tags 
-require('nvim-ts-autotag').setup()
-
--- indentation lines
-require("ibl").setup {
-  indent = {
-    char = "▏", -- Thin vertical line
-    highlight = { "IndentBlanklineChar" }, -- Force default color
-  },
-  scope = {
-    enabled = true, -- Highlights the current indentation scope
-    show_start = true,
-    show_end = false,
-    highlight = { "IndentBlanklineScope" },
-  },
-}
--- colors for indent blocks
-vim.api.nvim_set_hl(0, "IndentBlanklineChar", { fg = "#4C6080", nocombine = true }) -- default color 
-vim.api.nvim_set_hl(0, "IndentBlanklineScope", { fg = "#EFF2F6", bold = true }) -- block highlight color 
 
 -- harpoon
 vim.api.nvim_set_keymap('n', '<leader>ha', [[<cmd>lua require("harpoon.mark").add_file()<CR>]], { noremap = true, silent = true })
@@ -217,21 +179,31 @@ telescope.setup {
         },
     },
 }
-
 vim.api.nvim_set_keymap('n', '<leader>ff', [[<cmd>lua require('telescope.builtin').find_files()<CR>]], { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>fg', [[<cmd>lua require('telescope.builtin').live_grep()<CR>]], { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>fb', [[<cmd>lua require('telescope.builtin').buffers()<CR>]], { noremap = true, silent = true })
 vim.api.nvim_set_keymap('n', '<leader>fh', [[<cmd>Telescope harpoon marks<CR>]], { noremap = true, silent = true })
--- Add live grep in open buffers
-vim.keymap.set("n", "<leader>go", function()
-  require("telescope.builtin").live_grep({ grep_open_files = true })
-end, { noremap = true, silent = true })
 
+--undo tree 
+vim.api.nvim_set_keymap('n', '<leader>ut', ':UndotreeToggle<CR>', { noremap = true, silent = true })
+-- Enable persistent undo
+vim.opt.undofile = true
+vim.opt.undodir = vim.fn.expand('~/.config/nvim/undo') -- Change the path as needed
 
 -- navigation
 vim.api.nvim_set_keymap('n', '<leader>b', [[<cmd>b#<CR>]], { noremap = true, silent = true })
 
-
+--minimap 
+--vim.defer_fn(function()
+--    vim.cmd('Minimap')
+--    vim.api.nvim_exec([[
+--        augroup MinimapHighlight
+--            autocmd!
+--            autocmd BufEnter * if vim.bo.filetype == 'minimap' then vim.wo.cursorline = false vim.wo.cursorcolumn = false end
+--        augroup END
+--    ]], false)
+--    vim.cmd('let g:minimap_highlight_search=1')
+--end, 100)
 
 --lsp 
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev,{desc='go to prev diagnostic("error,warning") message'})
@@ -242,101 +214,68 @@ vim.cmd("set winhighlight=NormalFloat:Normal,FloatBorder:Normal")
 vim.cmd("hi NormalFloat guibg=#000000")
 vim.cmd("hi FloatBorder guibg=#000000 guifg=#FFFFFF gui=nocombine")
 
---show function information when typing a function
+--function info while typing
 require'lsp_signature'.setup({
   bind = true,
-  floating_window = {
-    border = "rounded", -- Or any other border style you prefer
-    focusable = false, -- Prevent the floating window from gaining focus
-  },
-  hint_enable = false,
+  floating_window = true,  -- Enable hover-like floating window
+  hint_enable = false,     -- Disable inline hints if not needed
 })
---require'lsp_signature'.setup({
---  bind = true,
---  floating_window = true,  -- Enable hover-like floating window
---  hint_enable = false,     -- Disable inline hints if not needed
---})
---vim.api.nvim_create_autocmd("CursorMovedI", {
---  callback = function()
---    vim.lsp.buf.signature_help()
---  end
---})
+vim.api.nvim_create_autocmd("CursorMovedI", {
+  callback = function()
+    vim.lsp.buf.signature_help()
+  end
+})
+
 
 local lspconfig = require('lspconfig')
 local handlers = {
 	["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = "rounded"}),
 	["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = "rounded"}),
 }
---local servers = { "lua_ls", "pyright", "clangd", "tsserver"}
-local servers = { "pyright", "clangd", "ts_ls"}
-local node_bin_path = "/Users/nsindhe/.nvm/versions/node/v22.14.0/bin"
-vim.env.PATH = node_bin_path .. ":" .. vim.env.PATH
+local servers = { "pyright", "clangd", "tsserver"}
 
-local on_attach = function(client, bufnr)
+local on_attach = function(_ , bufnr)
     vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
     vim.api.nvim_buf_set_keymap(bufnr, 'n', 'K', '<cmd>lua vim.lsp.buf.hover()<CR>', opts)
     vim.api.nvim_set_keymap('i', '<c-s>', '<cmd>lua vim.lsp.buf.signature_help()<CR>', opts)
-    -- chat gpt
-    vim.keymap.set("n", "<leader>T", vim.lsp.buf.type_definition, { noremap = true, silent = true })
-    vim.keymap.set("n", "<leader>vi", function()
-      vim.lsp.buf.hover()
-    end, { noremap = true, silent = true })
-    vim.keymap.set("n", "<leader>vs", vim.lsp.buf.signature_help, { noremap = true, silent = true })
-    vim.keymap.set("n", "<leader>vd", function()
-      require('telescope.builtin').lsp_definitions()
-    end, { noremap = true, silent = true })
-    vim.keymap.set("n", "<leader>D", function()
-      require('telescope.builtin').lsp_definitions()
-    end, { noremap = true, silent = true })
-    vim.keymap.set("n", "<leader>vvd", vim.lsp.buf.definition, { noremap = true, silent = true })
-    vim.keymap.set("n", "<leader>p", "<cmd>Lspsaga peek_definition<CR>", { noremap = true, silent = true })
 end
 
 for _, lsp in pairs(servers)
 do
-    --lspconfig[lsp].setup {
-    --    on_attach = on_attach,
-    --    handlers = handlers,
-    --    flags = {
-    --        debounce_text_changes = 150,
-    --    },
-    --}
-    local config = {
+    lspconfig[lsp].setup {
         on_attach = on_attach,
         handlers = handlers,
         flags = {
-          debounce_text_changes = 150,
+            debounce_text_changes = 150,
         },
     }
-
-    if lsp == "ts_ls" then
-        config.settings = {
-            typescript = {
-                tsdk = "/Users/nsindhe/.nvm/versions/node/v22.14.0/lib/node_modules/typescript/lib",
-            },
-        }
-    end
-
-    lspconfig[lsp].setup(config)
-
 end
 
--- to avoid init_mts is not found error for import 
-require'lspconfig'.pyright.setup{
-    settings = {
-        python = {
-            analysis = {
-                extraPaths = {
-                    "/volume/regressions/toby/test-suites/MTS/resources",
-                    "/homes/nsindhe/automationScripts",
-                    "/homes/nsindhe/automationScripts/autoRunCiCd"
-                }
-            }
-        }
-    }
+--typescript lsp config
+local on_attach_typescript = function (_, buffer)
+  vim.keymap.set('n', 'gt', vim.lsp.buf.type_definition, opts) -- Go to type definition
+  vim.keymap.set('n', '<leader>r', vim.lsp.buf.rename, opts) -- Rename symbol
+
+end
+lspconfig.tsserver.setup {
+  on_attach = on_attach_typescript,
 }
 
--- lua lsp is defined seperate because of "vim" global variable 
+-- elixir lsp config 
+lspconfig.elixirls.setup{
+  cmd = {"/Users/nsindhe/.config/nvim/plugged/elixir-ls/scripts/language_server.sh"},
+  on_attach = function(_, bufnr)
+    print("LSP attached to buffer", bufnr)
+  end,
+  settings = {
+    elixirLS = {
+      dialyzerEnabled = false,
+      fetchDeps = false
+    }
+  }
+}
+
+-- lua lsp is defined seperate for global variable 
 lspconfig.lua_ls.setup {
     on_attach = on_attach,
     handlers = handlers,
@@ -347,6 +286,7 @@ lspconfig.lua_ls.setup {
         Lua = {
             diagnostics = {
                 globals = { 'vim' },  -- List of global variables to consider as defined
+                disable = { 'missing-fields' },
             },
             runtime = {
                 version = 'LuaJIT',
@@ -394,9 +334,9 @@ vim.defer_fn(function()
     })
 end, 100)
 
+--mason config
 require("mason").setup({
     ui = {
-        -- The border to use for the UI window. Accepts same border values as |nvim_open_win()|.
         border = "shadow",
         icons = {
             package_installed = "✓",
@@ -405,9 +345,3 @@ require("mason").setup({
         }
     }
 })
-
----undo tree
-vim.api.nvim_set_keymap('n', '<leader>ut', ':UndotreeToggle<CR>', { noremap = true, silent = true })
---- Enable persistent undo
-vim.opt.undofile = true
-vim.opt.undodir = vim.fn.expand('~/.config/nvim/undo') -- Change the path as needed
