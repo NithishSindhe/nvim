@@ -1,6 +1,7 @@
 local opts = { noremap=true, silent=true }
 vim.opt.relativenumber = true
 vim.api.nvim_set_keymap('n', '<C-l>', ':normal zz<CR>', { noremap = true, silent = true })
+vim.o.guifont = "JetBrainsMono Nerd Font:h14"
 vim.opt.cursorline = true
 vim.opt.nu = true
 vim.opt.tabstop = 4
@@ -65,15 +66,16 @@ vim.api.nvim_exec([[
 ]], false)
 
 --Highlight yanked lines 
---vim.cmd([[highlight hl_yank guibg=DarkBlue ctermbg=DarkBlue gui=NONE cterm=NONE]])
-vim.cmd([[highlight hl_yank guibg=yellow ctermbg=yellow]])
-vim.api.nvim_exec([[
-  augroup highlight_yank
-    autocmd!
-    autocmd TextYankPost * silent! lua require'vim.highlight'.on_yank({ higroup = "hl_yank", timeout = 100 })
-  augroup END
-]], false)
-
+-- Define the highlight group
+vim.api.nvim_set_hl(0, "YankHighlight", { bg = "Yellow" })
+-- Set up autocmd with new Lua API
+vim.api.nvim_create_augroup("HighlightYank", { clear = true })
+vim.api.nvim_create_autocmd("TextYankPost", {
+  group = "HighlightYank",
+  callback = function()
+    vim.highlight.on_yank({ higroup = "YankHighlight", timeout = 100 })
+  end,
+})
 
 
 -- PLUGGINS
@@ -105,7 +107,7 @@ vim.call('plug#begin', '~/.config/nvim/plugged')
     Plug 'https://github.com/vim-scripts/netrw.vim'
     Plug 'vim-airline/vim-airline'  --for top bar and bottom bar 
     Plug 'vim-airline/vim-airline-themes' --themes for airline plugin
-    Plug 'mfussenegger/nvim-jdtls' -- java lsp
+    --Plug 'mfussenegger/nvim-jdtls' -- java lsp
     Plug 'nvim-treesitter/nvim-treesitter'
 
 vim.call('plug#end')
@@ -114,13 +116,12 @@ vim.call('plug#end')
 vim.cmd('let g:airline_powerline_fonts = 1')
 
 -- tabline 
-vim.cmd('let g:airline#extensions#tabline#enabled = 1')
 vim.cmd("let g:airline#extensions#ale#enabled = 1")
 vim.cmd("let g:airline_powerline_fonts = 1")
 vim.cmd("let g:airline_theme='papercolor'")
-vim.cmd("let g:airline#extensions#tabline#show_tab_nr = 1")
-vim.cmd("let g:airline#extensions#tabline#tab_nr_type = 1")
-vim.cmd("let g:airline#extensions#tabline#tabs_label = 't'")
+-- disable top bar, disable tabline
+vim.cmd("let g:airline#extensions#tabline#enabled = 0")
+
 
 -- github theme 
 vim.cmd('colorscheme github_dark_default')
@@ -155,6 +156,9 @@ treesitter_config.setup {
     end,
   },
 }
+
+--lspsaga 
+require('lspsaga').setup({})
 
 --auto complete tags 
 require('nvim-ts-autotag').setup()
@@ -237,10 +241,6 @@ vim.api.nvim_set_keymap('n', '<leader>b', [[<cmd>b#<CR>]], { noremap = true, sil
 vim.keymap.set('n', '[d', vim.diagnostic.goto_prev,{desc='go to prev diagnostic("error,warning") message'})
 vim.keymap.set('n', ']d', vim.diagnostic.goto_next,{desc='go to next diagnostic("error,warning") message'})
 require('lspconfig.ui.windows').default_options.border = 'single'
--- below 3 lines are for border in normal mode 
-vim.cmd("set winhighlight=NormalFloat:Normal,FloatBorder:Normal")
-vim.cmd("hi NormalFloat guibg=#000000")
-vim.cmd("hi FloatBorder guibg=#000000 guifg=#FFFFFF gui=nocombine")
 
 --show function information when typing a function
 require'lsp_signature'.setup({
@@ -251,20 +251,10 @@ require'lsp_signature'.setup({
   },
   hint_enable = false,
 })
---require'lsp_signature'.setup({
---  bind = true,
---  floating_window = true,  -- Enable hover-like floating window
---  hint_enable = false,     -- Disable inline hints if not needed
---})
---vim.api.nvim_create_autocmd("CursorMovedI", {
---  callback = function()
---    vim.lsp.buf.signature_help()
---  end
---})
 
 local lspconfig = require('lspconfig')
 local handlers = {
-	["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = "rounded"}),
+	--["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = "rounded"}),
 	["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = "rounded"}),
 }
 --local servers = { "lua_ls", "pyright", "clangd", "tsserver"}
@@ -272,7 +262,7 @@ local servers = { "pyright", "clangd", "ts_ls"}
 local node_bin_path = "/Users/nsindhe/.nvm/versions/node/v22.14.0/bin"
 vim.env.PATH = node_bin_path .. ":" .. vim.env.PATH
 
-local on_attach = function(client, bufnr)
+local on_attach = function(_, bufnr)
     vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
     vim.api.nvim_buf_set_keymap(bufnr, 'n', 'K', '<cmd>lua vim.lsp.buf.hover()<CR>', opts)
     vim.api.nvim_set_keymap('i', '<c-s>', '<cmd>lua vim.lsp.buf.signature_help()<CR>', opts)
@@ -289,18 +279,13 @@ local on_attach = function(client, bufnr)
       require('telescope.builtin').lsp_definitions()
     end, { noremap = true, silent = true })
     vim.keymap.set("n", "<leader>vvd", vim.lsp.buf.definition, { noremap = true, silent = true })
-    vim.keymap.set("n", "<leader>p", "<cmd>Lspsaga peek_definition<CR>", { noremap = true, silent = true })
+    --vim.keymap.set("n", "<leader>p", "<cmd>Lspsaga peek_definition<CR>", { noremap = true, silent = true })
+    vim.keymap.set("n", "<leader>p", "<cmd>Lspsaga peek_definition<CR>", { silent = true })
+
 end
 
 for _, lsp in pairs(servers)
 do
-    --lspconfig[lsp].setup {
-    --    on_attach = on_attach,
-    --    handlers = handlers,
-    --    flags = {
-    --        debounce_text_changes = 150,
-    --    },
-    --}
     local config = {
         on_attach = on_attach,
         handlers = handlers,
@@ -316,9 +301,7 @@ do
             },
         }
     end
-
     lspconfig[lsp].setup(config)
-
 end
 
 -- to avoid init_mts is not found error for import 
@@ -362,6 +345,16 @@ lspconfig.lua_ls.setup {
     },
 }
 
+-- set colors for floating windows
+vim.cmd([[
+  hi NormalFloat guibg=#3C4A5D guifg=#e6edf3
+  hi FloatBorder guibg=#3C4A5D guifg=#494C50
+  hi Pmenu guibg=#3C4A5D guifg=#e6edf3
+  hi PmenuSel guibg=#5A6A80 guifg=#ffffff
+  hi PmenuThumb guibg=#5A6A80
+  hi PmenuSbar guibg=#2c333f
+]])
+
 --nvim-cmp
 vim.defer_fn(function()
     local cmp = require('cmp')
@@ -375,12 +368,14 @@ vim.defer_fn(function()
         -- window variable is for border on floating window in insert mode 
         window = {
             completion = {
-              border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
-              winhighlight = "Normal:CmpPmenu,FloatBorder:CmpBorder,CursorLine:PmenuSel,Search:None",
+                --border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
+                --winhighlight = "Normal:CmpPmenu,FloatBorder:CmpBorder,CursorLine:PmenuSel,Search:None",
+                winhighlight = "Normal:Pmenu,FloatBorder:FloatBorder,CursorLine:PmenuSel,Search:None"
             },
             documentation = {
-              border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
-              winhighlight = "Normal:CmpPmenu,FloatBorder:CmpBorder,CursorLine:PmenuSel,Search:None",
+                --border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
+                --winhighlight = "Normal:CmpPmenu,FloatBorder:CmpBorder,CursorLine:PmenuSel,Search:None",
+                winhighlight = "Normal:Pmenu,FloatBorder:FloatBorder,CursorLine:PmenuSel,Search:None"
             },
         },
         completion = {
@@ -406,8 +401,9 @@ require("mason").setup({
     }
 })
 
----undo tree
+--undo tree
 vim.api.nvim_set_keymap('n', '<leader>ut', ':UndotreeToggle<CR>', { noremap = true, silent = true })
---- Enable persistent undo
+
+-- Enable persistent undo
 vim.opt.undofile = true
 vim.opt.undodir = vim.fn.expand('~/.config/nvim/undo') -- Change the path as needed
