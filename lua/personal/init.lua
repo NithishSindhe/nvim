@@ -87,6 +87,7 @@ local Plug = vim.fn['plug#']
 vim.call('plug#begin', '~/.config/nvim/plugged')
 
     Plug('lukas-reineke/indent-blankline.nvim', { ['tag'] = 'v3.0.0' })
+    Plug 'danymat/neogen' -- for auto documentaion of typescript functions
     Plug 'glepnir/lspsaga.nvim'
     Plug 'windwp/nvim-ts-autotag'
     Plug 'ray-x/lsp_signature.nvim' -- display function arg info while in insert mode
@@ -122,6 +123,13 @@ vim.cmd("let g:airline_theme='papercolor'")
 -- disable top bar, disable tabline
 vim.cmd("let g:airline#extensions#tabline#enabled = 0")
 
+--neogen auto doc typescript 
+require('neogen').setup {
+  enabled = true,
+}
+vim.keymap.set("n", "<leader>cd", function()
+  require("neogen").generate()
+end, { desc = "Generate doc comment", noremap = true, silent = true })
 
 -- github theme 
 vim.cmd('colorscheme github_dark_default')
@@ -158,7 +166,11 @@ treesitter_config.setup {
 }
 
 --lspsaga 
-require('lspsaga').setup({})
+require('lspsaga').setup({
+  lightbulb = {
+    enable = false, 
+  },
+})
 
 --auto complete tags 
 require('nvim-ts-autotag').setup()
