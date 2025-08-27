@@ -1,4 +1,5 @@
 local opts = { noremap=true, silent=true }
+vim.o.mouse = ""
 vim.opt.relativenumber = true
 vim.api.nvim_set_keymap('n', '<C-l>', ':normal zz<CR>', { noremap = true, silent = true })
 vim.o.guifont = "JetBrainsMono Nerd Font:h14"
@@ -28,8 +29,8 @@ local vnoremap = require("personal.keymap").vnoremap
 local xnoremap = require("personal.keymap").xnoremap
 local inoremap = require("personal.keymap").inoremap
 
-local filepath = vim.fn.stdpath('config') .. '/lua/personal/servers.lua'
-dofile(filepath)
+--local filepath = vim.fn.stdpath('config') .. '/lua/personal/servers.lua'
+--dofile(filepath)
 
 -- keep page centered all the time 
 nnoremap("<C-d>", "<C-d>zz")
