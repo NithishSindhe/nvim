@@ -1,3 +1,8 @@
+-- run these commands in mac terminal to remap esc and caps lock systemwide 
+-- hidutil property --set '{"UserKeyMapping":[
+-- {"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029},
+-- {"HIDKeyboardModifierMappingSrc":0x700000029,"HIDKeyboardModifierMappingDst":0x700000039}
+-- ]}'
 local opts = { noremap=true, silent=true }
 vim.o.mouse = ""
 vim.opt.relativenumber = true
@@ -88,6 +93,7 @@ local Plug = vim.fn['plug#']
 vim.call('plug#begin', '~/.config/nvim/plugged')
 
     Plug('lukas-reineke/indent-blankline.nvim', { ['tag'] = 'v3.0.0' })
+    Plug 'stevearc/conform.nvim' -- formatter
     Plug 'danymat/neogen' -- for auto documentaion of typescript functions
     Plug 'glepnir/lspsaga.nvim'
     Plug 'windwp/nvim-ts-autotag'
@@ -116,6 +122,31 @@ vim.call('plug#end')
 
 -- power line fonts 
 vim.cmd('let g:airline_powerline_fonts = 1')
+
+-- formatter config 
+require("conform").setup({
+    formatters_by_ft = {
+        typescript = { "prettier" },
+        typescriptreact = { "prettier" },
+        javascript = { "prettier" },
+        javascriptreact = { "prettier" },
+        -- Add other file types and formatters as needed
+    },
+})
+-- Visual mode mapping: format selection
+vim.keymap.set("v", "<leader>fp", function()
+  local start_pos = vim.api.nvim_buf_get_mark(0, "<")
+  local end_pos   = vim.api.nvim_buf_get_mark(0, ">")
+
+  require("conform").format({
+    lsp_fallback = true,
+    range = {
+      start = { start_pos[1], start_pos[2] },
+      ["end"] = { end_pos[1], end_pos[2] },
+    },
+  })
+end, { desc = "Format selection with Prettier" })
+
 
 -- tabline 
 vim.cmd("let g:airline#extensions#ale#enabled = 1")
