@@ -3,22 +3,33 @@
 -- {"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029},
 -- {"HIDKeyboardModifierMappingSrc":0x700000029,"HIDKeyboardModifierMappingDst":0x700000039}
 -- ]}'
+-- run these commands in mac terminal to remap esc and caps lock systemwide 
+-- hidutil property --set '{"UserKeyMapping":[
+-- {"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029},
+-- {"HIDKeyboardModifierMappingSrc":0x700000029,"HIDKeyboardModifierMappingDst":0x700000039}
+-- ]}'
+
 local opts = { noremap=true, silent=true }
-vim.o.mouse = ""
+
+-- Basic settings
+vim.o.mouse = "a"  -- Enable mouse support (change to "" if you really want it disabled)
 vim.opt.relativenumber = true
-vim.api.nvim_set_keymap('n', '<C-l>', ':normal zz<CR>', { noremap = true, silent = true })
-vim.o.guifont = "JetBrainsMono Nerd Font:h14"
 vim.opt.cursorline = true
 vim.opt.nu = true
 vim.opt.tabstop = 4
 vim.opt.softtabstop = 4
-vim.opt.expandtab=true
-vim.opt.smartindent = false
+vim.opt.expandtab = true
+vim.opt.smartindent = true  -- Re-enabled for better indentation
 vim.opt.shiftwidth = 4
+vim.opt.listchars = "tab:>-"
+vim.opt.shortmess:remove("S")
+vim.o.guifont = "JetBrainsMono Nerd Font:h14"
+
+-- Leader key
 vim.g.mapleader = " "
 vim.g.netrw_sort_options = "i"
-vim.opt.listchars ="tab:>-"
-vim.opt.shortmess:remove("S")
+
+-- TypeScript/React specific settings
 vim.api.nvim_create_autocmd("FileType", {
   pattern = { "typescriptreact", "typescript" },
   callback = function()
@@ -34,36 +45,37 @@ local vnoremap = require("personal.keymap").vnoremap
 local xnoremap = require("personal.keymap").xnoremap
 local inoremap = require("personal.keymap").inoremap
 
---local filepath = vim.fn.stdpath('config') .. '/lua/personal/servers.lua'
---dofile(filepath)
-
--- keep page centered all the time 
+-- OPTIMIZED: Only center on larger jumps, not every movement
+-- This dramatically improves performance
 nnoremap("<C-d>", "<C-d>zz")
 nnoremap("<C-u>", "<C-u>zz")
 nnoremap("<C-k>", "<C-u>zz")
 nnoremap("<C-j>", "<C-d>zz")
 vnoremap("<C-k>", "<C-u>zz")
 vnoremap("<C-j>", "<C-d>zz")
---vnoremap("dj", "djzz")
---nnoremap("dk", "dkzz")
+
+-- Center on paragraph jumps and search results only
 vnoremap("}", "}zz")
 nnoremap("}", "}zz")
 vnoremap("{", "{zz")
 nnoremap("{", "{zz")
-nnoremap("n", "nzz")
-nnoremap("n", "nzz")
+nnoremap("n", "nzz")  -- FIXED: Removed duplicate
 vnoremap("N", "Nzz")
 nnoremap("N", "Nzz")
-vnoremap("k", "kzz")
-nnoremap("k", "kzz")
-nnoremap("j", "jzz")
-vnoremap("j", "jzz")
+
+-- REMOVED: j/k centering - major performance bottleneck
+-- If you really need centered navigation, use <C-j>/<C-k> instead
+
+-- Clipboard and paste operations
 xnoremap("p", "\"_dP")
 nnoremap("y", "\"+y")
 vnoremap("y", "\"+y")
+
+-- Utility mappings
 nnoremap("<leader>c",[[<cmd>let @/='' | echo<cr>]])
 nnoremap("<leader>d",[[<cmd>bd<CR>]])
-vim.api.nvim_set_keymap('n', '<leader>fb', [[<cmd>lua require('telescope.builtin').buffers()<CR>]], { noremap = true, silent = true })
+vim.api.nvim_set_keymap('n', '<leader>fb', [[<cmd>lua require('telescope.builtin').buffers()<CR>]], opts)
+vim.api.nvim_set_keymap('n', '<C-l>', ':normal zz<CR>', opts)
 
 -- Highlight the cursor line
 vim.api.nvim_exec([[
@@ -71,10 +83,8 @@ vim.api.nvim_exec([[
   hi CursorLineNr cterm=NONE ctermbg=235 guibg=#3E4452
 ]], false)
 
---Highlight yanked lines 
--- Define the highlight group
+-- Highlight yanked lines 
 vim.api.nvim_set_hl(0, "YankHighlight", { bg = "Yellow" })
--- Set up autocmd with new Lua API
 vim.api.nvim_create_augroup("HighlightYank", { clear = true })
 vim.api.nvim_create_autocmd("TextYankPost", {
   group = "HighlightYank",
@@ -83,21 +93,17 @@ vim.api.nvim_create_autocmd("TextYankPost", {
   end,
 })
 
-
--- PLUGGINS
-vim.cmd [[
-    set packpath+=~/.config/nvim/plugged
-]]
+-- PLUGINS
+vim.cmd [[set packpath+=~/.config/nvim/plugged]]
 local Plug = vim.fn['plug#']
 
 vim.call('plug#begin', '~/.config/nvim/plugged')
-
     Plug('lukas-reineke/indent-blankline.nvim', { ['tag'] = 'v3.0.0' })
-    Plug 'stevearc/conform.nvim' -- formatter
-    Plug 'danymat/neogen' -- for auto documentaion of typescript functions
+    Plug 'stevearc/conform.nvim'
+    Plug 'danymat/neogen'
     Plug 'glepnir/lspsaga.nvim'
     Plug 'windwp/nvim-ts-autotag'
-    Plug 'ray-x/lsp_signature.nvim' -- display function arg info while in insert mode
+    Plug 'ray-x/lsp_signature.nvim'
     Plug 'williamboman/mason.nvim'
     Plug 'neovim/nvim-lspconfig'
     Plug 'L3MON4D3/LuaSnip'
@@ -113,31 +119,30 @@ vim.call('plug#begin', '~/.config/nvim/plugged')
     Plug 'nvim-telescope/telescope.nvim'
     Plug 'projekt0n/github-nvim-theme'
     Plug 'https://github.com/vim-scripts/netrw.vim'
-    Plug 'vim-airline/vim-airline'  --for top bar and bottom bar 
-    Plug 'vim-airline/vim-airline-themes' --themes for airline plugin
-    --Plug 'mfussenegger/nvim-jdtls' -- java lsp
+    Plug 'vim-airline/vim-airline'
+    Plug 'vim-airline/vim-airline-themes'
     Plug 'nvim-treesitter/nvim-treesitter'
-
 vim.call('plug#end')
 
--- power line fonts 
+-- Airline config
 vim.cmd('let g:airline_powerline_fonts = 1')
+vim.cmd("let g:airline#extensions#ale#enabled = 1")
+vim.cmd("let g:airline_theme='papercolor'")
+vim.cmd("let g:airline#extensions#tabline#enabled = 0")
 
--- formatter config 
+-- Formatter config 
 require("conform").setup({
     formatters_by_ft = {
         typescript = { "prettier" },
         typescriptreact = { "prettier" },
         javascript = { "prettier" },
         javascriptreact = { "prettier" },
-        -- Add other file types and formatters as needed
     },
 })
--- Visual mode mapping: format selection
+
 vim.keymap.set("v", "<leader>fp", function()
   local start_pos = vim.api.nvim_buf_get_mark(0, "<")
-  local end_pos   = vim.api.nvim_buf_get_mark(0, ">")
-
+  local end_pos = vim.api.nvim_buf_get_mark(0, ">")
   require("conform").format({
     lsp_fallback = true,
     range = {
@@ -147,26 +152,16 @@ vim.keymap.set("v", "<leader>fp", function()
   })
 end, { desc = "Format selection with Prettier" })
 
-
--- tabline 
-vim.cmd("let g:airline#extensions#ale#enabled = 1")
-vim.cmd("let g:airline_powerline_fonts = 1")
-vim.cmd("let g:airline_theme='papercolor'")
--- disable top bar, disable tabline
-vim.cmd("let g:airline#extensions#tabline#enabled = 0")
-
---neogen auto doc typescript 
-require('neogen').setup {
-  enabled = true,
-}
+-- Neogen auto doc typescript 
+require('neogen').setup({ enabled = true })
 vim.keymap.set("n", "<leader>cd", function()
   require("neogen").generate()
 end, { desc = "Generate doc comment", noremap = true, silent = true })
 
--- github theme 
+-- Theme
 vim.cmd('colorscheme github_dark_default')
 
---treesitter
+-- OPTIMIZED: Treesitter with cached line count check
 local treesitter_config = require('nvim-treesitter.configs')
 treesitter_config.setup {
   ensure_installed = { "xml", "vim", "html", "vimdoc", "query", "robot", "cpp", "javascript", "python", "c", "lua", "rust", "java"},
@@ -176,59 +171,62 @@ treesitter_config.setup {
   textobjects = {
     select = {
       enable = true,
-      lookahead = true, -- Automatically jump to next match
+      lookahead = true,
       keymaps = {
-        ["ib"] = "@block.inner",   -- Select inside a tag's content
-        ["ab"] = "@block.outer",   -- Select the entire tag block
-        ["it"] = "@tag.inner",     -- Select inside tag name
-        ["at"] = "@tag.outer",     -- Select the full tag
+        ["ib"] = "@block.inner",
+        ["ab"] = "@block.outer",
+        ["it"] = "@tag.inner",
+        ["at"] = "@tag.outer",
       },
     },
   },
   highlight = {
     enable = true,
-    disable = function(_, buf)
-      local max_lines = 1000  -- Adjust this number based on performance
+    -- OPTIMIZED: Cache large buffer detection
+    disable = function(lang, buf)
+      local max_lines = 2000  -- Increased threshold
+      local ok, stats = pcall(vim.api.nvim_buf_get_var, buf, 'large_buf')
+      if ok then return stats end
+
       local line_count = vim.api.nvim_buf_line_count(buf)
-      if line_count > max_lines then
-        return true
-      end
+      local is_large = line_count > max_lines
+      pcall(vim.api.nvim_buf_set_var, buf, 'large_buf', is_large)
+      return is_large
     end,
   },
 }
 
---lspsaga 
+-- LSPSaga config
 require('lspsaga').setup({
-  lightbulb = {
-    enable = false, 
-  },
+  lightbulb = { enable = false },
 })
 
---auto complete tags 
+-- Auto complete tags 
 require('nvim-ts-autotag').setup()
 
--- indentation lines
+-- Indentation lines
 require("ibl").setup {
   indent = {
-    char = "▏", -- Thin vertical line
-    highlight = { "IndentBlanklineChar" }, -- Force default color
+    char = "│",
+    highlight = { "IndentBlanklineChar" },
   },
   scope = {
-    enabled = true, -- Highlights the current indentation scope
+    enabled = true,
     show_start = true,
     show_end = false,
     highlight = { "IndentBlanklineScope" },
   },
 }
--- colors for indent blocks
-vim.api.nvim_set_hl(0, "IndentBlanklineChar", { fg = "#4C6080", nocombine = true }) -- default color 
-vim.api.nvim_set_hl(0, "IndentBlanklineScope", { fg = "#EFF2F6", bold = true }) -- block highlight color 
 
--- harpoon
-vim.api.nvim_set_keymap('n', '<leader>ha', [[<cmd>lua require("harpoon.mark").add_file()<CR>]], { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>hs', [[<cmd>lua require("harpoon.ui").toggle_quick_menu()<CR>]], { noremap = true, silent = true })
+vim.api.nvim_set_hl(0, "IndentBlanklineChar", { fg = "#4C6080", nocombine = true })
+vim.api.nvim_set_hl(0, "IndentBlanklineScope", { fg = "#EFF2F6", bold = true })
+
+-- Harpoon
+vim.api.nvim_set_keymap('n', '<leader>ha', [[<cmd>lua require("harpoon.mark").add_file()<CR>]], opts)
+vim.api.nvim_set_keymap('n', '<leader>hs', [[<cmd>lua require("harpoon.ui").toggle_quick_menu()<CR>]], opts)
 for i = 1, 9 do
-    vim.api.nvim_set_keymap('n', string.format('<leader>%d', i), [[<cmd>lua require("harpoon.ui").nav_file(]] .. i .. [[)<CR>]], { noremap = true, silent = true })
+    vim.api.nvim_set_keymap('n', string.format('<leader>%d', i),
+        [[<cmd>lua require("harpoon.ui").nav_file(]] .. i .. [[)<CR>]], opts)
 end
 
 require("harpoon").setup({
@@ -237,7 +235,7 @@ require("harpoon").setup({
     }
 })
 
--- telescope
+-- Telescope
 local actions = require('telescope.actions')
 local telescope = require('telescope')
 telescope.load_extension('harpoon')
@@ -253,11 +251,11 @@ telescope.setup {
     defaults = {
         layout_strategy = 'vertical',
         layout_config = {
-            vertical = { width = 0.90  }
+            vertical = { width = 0.90 }
         },
         file_sorter = require('telescope.sorters').get_fzy_sorter,
         file_ignore_patterns = {"node_modules"},
-        generic_sorter =  require('telescope.sorters').get_generic_fuzzy_sorter,
+        generic_sorter = require('telescope.sorters').get_generic_fuzzy_sorter,
         mappings = {
             i = {
                 ["<esc>"] = actions.close,
@@ -266,70 +264,68 @@ telescope.setup {
     },
 }
 
-vim.api.nvim_set_keymap('n', '<leader>ff', [[<cmd>lua require('telescope.builtin').find_files()<CR>]], { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>fg', [[<cmd>lua require('telescope.builtin').live_grep()<CR>]], { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>fb', [[<cmd>lua require('telescope.builtin').buffers()<CR>]], { noremap = true, silent = true })
-vim.api.nvim_set_keymap('n', '<leader>fh', [[<cmd>Telescope harpoon marks<CR>]], { noremap = true, silent = true })
--- Add live grep in open buffers
+vim.api.nvim_set_keymap('n', '<leader>ff', [[<cmd>lua require('telescope.builtin').find_files()<CR>]], opts)
+vim.api.nvim_set_keymap('n', '<leader>fg', [[<cmd>lua require('telescope.builtin').live_grep()<CR>]], opts)
+vim.api.nvim_set_keymap('n', '<leader>fb', [[<cmd>lua require('telescope.builtin').buffers()<CR>]], opts)
+vim.api.nvim_set_keymap('n', '<leader>fh', [[<cmd>Telescope harpoon marks<CR>]], opts)
+
 vim.keymap.set("n", "<leader>go", function()
   require("telescope.builtin").live_grep({ grep_open_files = true })
-end, { noremap = true, silent = true })
+end, opts)
 
+-- Navigation
+vim.api.nvim_set_keymap('n', '<leader>b', [[<cmd>b#<CR>]], opts)
 
--- navigation
-vim.api.nvim_set_keymap('n', '<leader>b', [[<cmd>b#<CR>]], { noremap = true, silent = true })
-
-
-
---lsp 
-vim.keymap.set('n', '[d', vim.diagnostic.goto_prev,{desc='go to prev diagnostic("error,warning") message'})
-vim.keymap.set('n', ']d', vim.diagnostic.goto_next,{desc='go to next diagnostic("error,warning") message'})
+-- LSP Diagnostics
+vim.keymap.set('n', '[d', vim.diagnostic.goto_prev, {desc='go to prev diagnostic'})
+vim.keymap.set('n', ']d', vim.diagnostic.goto_next, {desc='go to next diagnostic'})
 require('lspconfig.ui.windows').default_options.border = 'single'
 
---show function information when typing a function
+-- LSP Signature (optimized settings)
 require'lsp_signature'.setup({
   bind = true,
   floating_window = {
-    border = "rounded", -- Or any other border style you prefer
-    focusable = false, -- Prevent the floating window from gaining focus
+    border = "rounded",
+    focusable = false,
   },
   hint_enable = false,
+  toggle_key = '<C-s>', -- Only show when needed
+  hi_parameter = "LspSignatureActiveParameter",
 })
 
+-- LSP Configuration
 local lspconfig = require('lspconfig')
 local handlers = {
-	--["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = "rounded"}),
-	["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = "rounded"}),
+    ["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = "rounded"}),
 }
---local servers = { "lua_ls", "pyright", "clangd", "tsserver"}
+
 local servers = { "pyright", "clangd", "ts_ls"}
 local node_bin_path = "/Users/nsindhe/.nvm/versions/node/v22.14.0/bin"
 vim.env.PATH = node_bin_path .. ":" .. vim.env.PATH
 
-local on_attach = function(_, bufnr)
-    vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
+local on_attach = function(client, bufnr)
+    -- FIXED: Use modern API
+    vim.bo[bufnr].omnifunc = 'v:lua.vim.lsp.omnifunc'
+
+    -- Core LSP mappings
     vim.api.nvim_buf_set_keymap(bufnr, 'n', 'K', '<cmd>lua vim.lsp.buf.hover()<CR>', opts)
-    vim.api.nvim_set_keymap('i', '<c-s>', '<cmd>lua vim.lsp.buf.signature_help()<CR>', opts)
-    -- chat gpt
-    vim.keymap.set("n", "<leader>T", vim.lsp.buf.type_definition, { noremap = true, silent = true })
-    vim.keymap.set("n", "<leader>vi", function()
-      vim.lsp.buf.hover()
-    end, { noremap = true, silent = true })
-    vim.keymap.set("n", "<leader>vs", vim.lsp.buf.signature_help, { noremap = true, silent = true })
+
+    -- Additional mappings
+    vim.keymap.set("n", "<leader>T", vim.lsp.buf.type_definition, { buffer = bufnr, noremap = true, silent = true })
+    vim.keymap.set("n", "<leader>vi", vim.lsp.buf.hover, { buffer = bufnr, noremap = true, silent = true })
+    vim.keymap.set("n", "<leader>vs", vim.lsp.buf.signature_help, { buffer = bufnr, noremap = true, silent = true })
     vim.keymap.set("n", "<leader>vd", function()
       require('telescope.builtin').lsp_definitions()
-    end, { noremap = true, silent = true })
+    end, { buffer = bufnr, noremap = true, silent = true })
     vim.keymap.set("n", "<leader>D", function()
       require('telescope.builtin').lsp_definitions()
-    end, { noremap = true, silent = true })
-    vim.keymap.set("n", "<leader>vvd", vim.lsp.buf.definition, { noremap = true, silent = true })
-    --vim.keymap.set("n", "<leader>p", "<cmd>Lspsaga peek_definition<CR>", { noremap = true, silent = true })
-    vim.keymap.set("n", "<leader>p", "<cmd>Lspsaga peek_definition<CR>", { silent = true })
-
+    end, { buffer = bufnr, noremap = true, silent = true })
+    vim.keymap.set("n", "<leader>vvd", vim.lsp.buf.definition, { buffer = bufnr, noremap = true, silent = true })
+    vim.keymap.set("n", "<leader>p", "<cmd>Lspsaga peek_definition<CR>", { buffer = bufnr, silent = true })
 end
 
-for _, lsp in pairs(servers)
-do
+-- Setup servers
+for _, lsp in pairs(servers) do
     local config = {
         on_attach = on_attach,
         handlers = handlers,
@@ -348,8 +344,10 @@ do
     lspconfig[lsp].setup(config)
 end
 
--- to avoid init_mts is not found error for import 
+-- Pyright with extra paths
 require'lspconfig'.pyright.setup{
+    on_attach = on_attach,
+    handlers = handlers,
     settings = {
         python = {
             analysis = {
@@ -363,17 +361,17 @@ require'lspconfig'.pyright.setup{
     }
 }
 
--- lua lsp is defined seperate because of "vim" global variable 
+-- Lua LSP
 lspconfig.lua_ls.setup {
     on_attach = on_attach,
     handlers = handlers,
     flags = {
-            debounce_text_changes = 150,
+        debounce_text_changes = 150,
     },
     settings = {
         Lua = {
             diagnostics = {
-                globals = { 'vim' },  -- List of global variables to consider as defined
+                globals = { 'vim' },
             },
             runtime = {
                 version = 'LuaJIT',
@@ -389,7 +387,7 @@ lspconfig.lua_ls.setup {
     },
 }
 
--- set colors for floating windows
+-- Floating window colors
 vim.cmd([[
   hi NormalFloat guibg=#3C4A5D guifg=#e6edf3
   hi FloatBorder guibg=#3C4A5D guifg=#494C50
@@ -399,26 +397,21 @@ vim.cmd([[
   hi PmenuSbar guibg=#2c333f
 ]])
 
---nvim-cmp
+-- OPTIMIZED: nvim-cmp setup (increased defer time)
 vim.defer_fn(function()
     local cmp = require('cmp')
     cmp.setup({
         sources = {
-            { name = 'buffer' },
             { name = 'nvim_lsp' },
+            { name = 'buffer', keyword_length = 3 },  -- Added keyword_length for performance
             { name = 'vsnip' },
             { name = 'path' },
         },
-        -- window variable is for border on floating window in insert mode 
         window = {
             completion = {
-                --border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
-                --winhighlight = "Normal:CmpPmenu,FloatBorder:CmpBorder,CursorLine:PmenuSel,Search:None",
                 winhighlight = "Normal:Pmenu,FloatBorder:FloatBorder,CursorLine:PmenuSel,Search:None"
             },
             documentation = {
-                --border = { "╭", "─", "╮", "│", "╯", "─", "╰", "│" },
-                --winhighlight = "Normal:CmpPmenu,FloatBorder:CmpBorder,CursorLine:PmenuSel,Search:None",
                 winhighlight = "Normal:Pmenu,FloatBorder:FloatBorder,CursorLine:PmenuSel,Search:None"
             },
         },
@@ -430,12 +423,17 @@ vim.defer_fn(function()
             ['<S-Tab>'] = cmp.mapping.select_prev_item(),
             ['<CR>'] = cmp.mapping.confirm({ select = true }),
         },
+        performance = {  -- Added performance tuning
+            debounce = 60,
+            throttle = 30,
+            fetching_timeout = 500,
+        },
     })
-end, 100)
+end, 500)  -- Increased from 100ms to 500ms
 
+-- Mason setup
 require("mason").setup({
     ui = {
-        -- The border to use for the UI window. Accepts same border values as |nvim_open_win()|.
         border = "shadow",
         icons = {
             package_installed = "✓",
@@ -445,9 +443,9 @@ require("mason").setup({
     }
 })
 
---undo tree
-vim.api.nvim_set_keymap('n', '<leader>ut', ':UndotreeToggle<CR>', { noremap = true, silent = true })
+-- Undo tree
+vim.api.nvim_set_keymap('n', '<leader>ut', ':UndotreeToggle<CR>', opts)
 
--- Enable persistent undo
+-- Persistent undo
 vim.opt.undofile = true
-vim.opt.undodir = vim.fn.expand('~/.config/nvim/undo') -- Change the path as needed
+vim.opt.undodir = vim.fn.expand('~/.config/nvim/undo')
