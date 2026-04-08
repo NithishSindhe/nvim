@@ -3,11 +3,6 @@
 -- {"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029},
 -- {"HIDKeyboardModifierMappingSrc":0x700000029,"HIDKeyboardModifierMappingDst":0x700000039}
 -- ]}'
--- run these commands in mac terminal to remap esc and caps lock systemwide 
--- hidutil property --set '{"UserKeyMapping":[
--- {"HIDKeyboardModifierMappingSrc":0x700000039,"HIDKeyboardModifierMappingDst":0x700000029},
--- {"HIDKeyboardModifierMappingSrc":0x700000029,"HIDKeyboardModifierMappingDst":0x700000039}
--- ]}'
 
 local opts = { noremap=true, silent=true }
 
@@ -28,6 +23,23 @@ vim.o.guifont = "JetBrainsMono Nerd Font:h14"
 -- Leader key
 vim.g.mapleader = " "
 vim.g.netrw_sort_options = "i"
+
+-- Copilot inline suggestions (conflict-safe with nvim-cmp <Tab>)
+vim.g.copilot_no_tab_map = true
+vim.g.copilot_filetypes = {
+  ["copilot-chat"] = false,
+  ["TelescopePrompt"] = false,
+}
+vim.keymap.set("i", "<C-j>", 'copilot#Accept("\\<CR>")', {
+  expr = true,
+  replace_keycodes = false,
+  silent = true,
+  desc = "Copilot accept suggestion",
+})
+vim.keymap.set("i", "<C-l>", "<Plug>(copilot-accept-word)", { silent = true, desc = "Copilot accept word" })
+vim.keymap.set("i", "<C-]>", "<Plug>(copilot-dismiss)", { silent = true, desc = "Copilot dismiss suggestion" })
+vim.keymap.set("i", "<C-e>", "<End>", { silent = true, desc = "Move cursor to end of line" })
+vim.keymap.set("i", "<C-a>", "<Home>", { silent = true, desc = "Move cursor to start of line" })
 
 -- TypeScript/React specific settings
 vim.api.nvim_create_autocmd("FileType", {
@@ -107,7 +119,6 @@ vim.call('plug#begin', '~/.config/nvim/plugged')
     Plug 'williamboman/mason.nvim'
     Plug 'neovim/nvim-lspconfig'
     Plug 'L3MON4D3/LuaSnip'
-    Plug 'VonHeikemen/lsp-zero.nvim'
     Plug 'hrsh7th/nvim-cmp'
     Plug 'hrsh7th/vim-vsnip'
     Plug 'hrsh7th/vim-vsnip-integ'
@@ -115,6 +126,7 @@ vim.call('plug#begin', '~/.config/nvim/plugged')
     Plug 'hrsh7th/cmp-nvim-lsp'
     Plug 'saadparwaiz1/cmp_luasnip'
     Plug 'nvim-lua/plenary.nvim'
+    Plug 'CopilotC-Nvim/CopilotChat.nvim'
     Plug 'ThePrimeagen/harpoon'
     Plug 'nvim-telescope/telescope.nvim'
     Plug 'projekt0n/github-nvim-theme'
@@ -139,6 +151,37 @@ require("conform").setup({
         javascriptreact = { "prettier" },
     },
 })
+
+local copilot_chat_ok, copilot_chat = pcall(require, "CopilotChat")
+if copilot_chat_ok then
+  copilot_chat.setup({
+    model = "gpt-4.1",
+    temperature = 0.1,
+    auto_insert_mode = true,
+    window = {
+      layout = "vertical",
+      width = 0.45,
+    },
+  })
+end
+vim.keymap.set("n", "<leader>aa", "<cmd>CopilotChatToggle<CR>", { noremap = true, silent = true, desc = "Toggle Copilot Chat" })
+vim.keymap.set("v", "<leader>aa", "<cmd>CopilotChat<CR>", { noremap = true, silent = true, desc = "Copilot Chat selection" })
+vim.keymap.set("n", "<leader>ao", "<cmd>CopilotChatOpen<CR>", { noremap = true, silent = true, desc = "Open Copilot Chat" })
+vim.keymap.set("n", "<leader>ax", "<cmd>CopilotChatClose<CR>", { noremap = true, silent = true, desc = "Close Copilot Chat" })
+vim.keymap.set("n", "<leader>ar", "<cmd>CopilotChatReset<CR>", { noremap = true, silent = true, desc = "Reset Copilot Chat" })
+vim.keymap.set("n", "<leader>ap", "<cmd>CopilotChatPrompts<CR>", { noremap = true, silent = true, desc = "Copilot Chat prompts" })
+vim.keymap.set("n", "<leader>am", "<cmd>CopilotChatModels<CR>", { noremap = true, silent = true, desc = "Copilot Chat models" })
+vim.keymap.set("n", "<leader>a.", "<cmd>CopilotChatStop<CR>", { noremap = true, silent = true, desc = "Stop Copilot Chat response" })
+vim.keymap.set("v", "<leader>ae", "<cmd>CopilotChatExplain<CR>", { noremap = true, silent = true, desc = "Explain selection" })
+vim.keymap.set("v", "<leader>af", "<cmd>CopilotChatFix<CR>", { noremap = true, silent = true, desc = "Fix selection" })
+vim.keymap.set("v", "<leader>at", "<cmd>CopilotChatTests<CR>", { noremap = true, silent = true, desc = "Generate tests from selection" })
+vim.keymap.set("v", "<leader>au", "<cmd>CopilotChatOptimize<CR>", { noremap = true, silent = true, desc = "Optimize selection" })
+vim.keymap.set("n", "<leader>ai", "<cmd>Copilot enable<CR>", { noremap = true, silent = true, desc = "Enable Copilot inline" })
+vim.keymap.set("n", "<leader>aI", "<cmd>Copilot disable<CR>", { noremap = true, silent = true, desc = "Disable Copilot inline" })
+vim.keymap.set("n", "<leader>as", "<cmd>Copilot status<CR>", { noremap = true, silent = true, desc = "Copilot status" })
+vim.keymap.set("n", "<leader>aA", "<cmd>Copilot setup<CR>", { noremap = true, silent = true, desc = "Copilot setup/login" })
+vim.keymap.set("n", "<leader>aP", "<cmd>Copilot panel<CR>", { noremap = true, silent = true, desc = "Copilot panel" })
+vim.keymap.set("n", "<leader>aM", "<cmd>Copilot model<CR>", { noremap = true, silent = true, desc = "Copilot model picker" })
 
 vim.keymap.set("v", "<leader>fp", function()
   local start_pos = vim.api.nvim_buf_get_mark(0, "<")
@@ -204,22 +247,26 @@ require('lspsaga').setup({
 -- Auto complete tags 
 require('nvim-ts-autotag').setup()
 
--- Indentation lines
-require("ibl").setup {
+-- Indent Blankline (v3 correct setup)
+local hooks = require("ibl.hooks")
+
+hooks.register(hooks.type.HIGHLIGHT_SETUP, function()
+  vim.api.nvim_set_hl(0, "IblIndent", { fg = "#4C6080", nocombine = true })
+  vim.api.nvim_set_hl(0, "IblScope", { fg = "#EFF2F6", bold = true })
+end)
+
+require("ibl").setup({
   indent = {
     char = "│",
-    highlight = { "IndentBlanklineChar" },
+    highlight = "IblIndent",
   },
   scope = {
     enabled = true,
     show_start = true,
     show_end = false,
-    highlight = { "IndentBlanklineScope" },
+    highlight = "IblScope",
   },
-}
-
-vim.api.nvim_set_hl(0, "IndentBlanklineChar", { fg = "#4C6080", nocombine = true })
-vim.api.nvim_set_hl(0, "IndentBlanklineScope", { fg = "#EFF2F6", bold = true })
+})
 
 -- Harpoon
 vim.api.nvim_set_keymap('n', '<leader>ha', [[<cmd>lua require("harpoon.mark").add_file()<CR>]], opts)
@@ -299,7 +346,8 @@ local handlers = {
     ["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = "rounded"}),
 }
 
-local servers = { "pyright", "clangd", "ts_ls"}
+--local servers = { "pyright", "clangd", "ts_ls"}
+local servers = { "pyright", "clangd", "vtsls"}
 local node_bin_path = "/Users/nsindhe/.nvm/versions/node/v22.14.0/bin"
 vim.env.PATH = node_bin_path .. ":" .. vim.env.PATH
 
@@ -333,14 +381,6 @@ for _, lsp in pairs(servers) do
           debounce_text_changes = 150,
         },
     }
-
-    if lsp == "ts_ls" then
-        config.settings = {
-            typescript = {
-                tsdk = "/Users/nsindhe/.nvm/versions/node/v22.14.0/lib/node_modules/typescript/lib",
-            },
-        }
-    end
     lspconfig[lsp].setup(config)
 end
 
