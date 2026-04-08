@@ -1,11 +1,15 @@
 --- https://github.dev/tjdevries/config_manager/blob/master/xdg_config/nvim/plugin/options.lua
 local M = {}
 
+-- Phase 5: hoist frequently-required modules to module-level to avoid
+-- per-entry require() cache lookups in display callbacks
+local t_utils = require('telescope.utils')
+local p_strings = require('plenary.strings')
+
 M.get_path_and_tail = function(filename)
-  local utils = require('telescope.utils')
-  local bufname_tail = utils.path_tail(filename)
-  local path_without_tail = require('plenary.strings').truncate(filename, #filename - #bufname_tail, '')
-  local path_to_display = utils.transform_path({
+  local bufname_tail = t_utils.path_tail(filename)
+  local path_without_tail = p_strings.truncate(filename, #filename - #bufname_tail, '')
+  local path_to_display = t_utils.transform_path({
     path_display = { 'truncate' },
   }, path_without_tail)
 
@@ -300,7 +304,7 @@ function M.gen_from_buffer(opts)
     -- bufnr_width + modes + icon + 3 spaces + : + lnum
     opts.__prefix = opts.bufnr_width + 4 + icon_width + 3 + 1 + #tostring(entry.lnum)
     local bufname_tail = utils.path_tail(entry.filename)
-    local path_without_tail = require('plenary.strings').truncate(entry.filename, #entry.filename - #bufname_tail, '')
+    local path_without_tail = p_strings.truncate(entry.filename, #entry.filename - #bufname_tail, '')
     local path_to_display = utils.transform_path({
       path_display = { 'truncate' },
     }, path_without_tail)
