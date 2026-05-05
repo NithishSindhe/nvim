@@ -715,7 +715,26 @@ require("lazy").setup({
     cmd = "Telescope",
     keys = {
       { "<leader>ff", function() require('telescope.builtin').find_files() end, desc = "Find files" },
-      { "<leader>fg", function() require('telescope.builtin').live_grep() end, desc = "Live grep" },
+      { "<leader>fg", function()
+        require('telescope.builtin').live_grep({
+          default_text = vim.g._telescope_last_grep or "",
+          on_complete = {
+            function(picker)
+              local prompt_bufnr = picker.prompt_bufnr
+              vim.api.nvim_create_autocmd("BufLeave", {
+                buffer = prompt_bufnr,
+                once = true,
+                callback = function()
+                  local prompt = require('telescope.actions.state').get_current_line()
+                  if prompt and prompt ~= "" then
+                    vim.g._telescope_last_grep = prompt
+                  end
+                end,
+              })
+            end,
+          },
+        })
+      end, desc = "Live grep" },
       { "<leader>fb", function() require('telescope.builtin').buffers() end, desc = "Buffers" },
       { "<leader>fh", "<cmd>Telescope harpoon marks<CR>", desc = "Harpoon marks" },
       { "<leader>go", function() require("telescope.builtin").live_grep({ grep_open_files = true }) end, desc = "Grep open files" },
