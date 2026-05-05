@@ -54,6 +54,28 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+-- Ruby specific settings (2-space indentation convention)
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "ruby", "eruby" },
+  callback = function()
+    vim.opt_local.shiftwidth = 2
+    vim.opt_local.tabstop = 2
+    vim.opt_local.expandtab = true
+    vim.opt_local.softtabstop = 2
+  end,
+})
+
+-- YAML settings (Rails config files use 2-space indentation)
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "yaml" },
+  callback = function()
+    vim.opt_local.shiftwidth = 2
+    vim.opt_local.tabstop = 2
+    vim.opt_local.expandtab = true
+    vim.opt_local.softtabstop = 2
+  end,
+})
+
 local nnoremap = require("personal.keymap").nnoremap
 local vnoremap = require("personal.keymap").vnoremap
 local xnoremap = require("personal.keymap").xnoremap
@@ -104,13 +126,56 @@ local function apply_custom_highlights()
   vim.api.nvim_set_hl(0, "PmenuSbar", { bg = "#2c333f" })
 end
 
+-- Sync tmux status bar colors with Neovim's colorscheme
+local function sync_tmux_statusbar()
+  if vim.env.TMUX == nil then return end
+  vim.schedule(function()
+    local normal_hl = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+    if not normal_hl.bg then return end
+
+    local bg = string.format("#%06x", normal_hl.bg)
+    local fg = normal_hl.fg and string.format("#%06x", normal_hl.fg) or "white"
+
+    -- Read muted fg from Comment highlight for inactive window tabs
+    local comment_hl = vim.api.nvim_get_hl(0, { name = "Comment", link = false })
+    local muted = comment_hl.fg and string.format("#%06x", comment_hl.fg) or "gray"
+
+    -- Read accent color from Function highlight for active elements
+    local func_hl = vim.api.nvim_get_hl(0, { name = "Function", link = false })
+    local accent = func_hl.fg and string.format("#%06x", func_hl.fg) or "green"
+
+    vim.fn.system('tmux set-option -g status-style "bg=' .. bg .. ',fg=' .. fg .. '"')
+    vim.fn.system('tmux set-option -g message-style "bg=' .. bg .. ',fg=' .. accent .. ',bold"')
+    vim.fn.system('tmux set-option -g status-left "#[fg=' .. accent .. ',bold] #S "')
+    vim.fn.system('tmux setw -g window-status-style "fg=' .. muted .. '"')
+    vim.fn.system('tmux setw -g window-status-current-style "fg=' .. accent .. ',bold"')
+    vim.fn.system('tmux set-option -g pane-active-border-style "fg=' .. accent .. '"')
+  end)
+end
+
 vim.api.nvim_create_autocmd("ColorScheme", {
   callback = function()
     apply_custom_highlights()
+    sync_tmux_statusbar()
   end,
 })
--- Apply immediately for the initial load
+-- Apply highlights immediately for the initial load (sync deferred to ColorScheme autocmd)
 apply_custom_highlights()
+
+-- Reset tmux status bar to default when leaving Neovim or switching panes
+local function reset_tmux_statusbar()
+  if vim.env.TMUX == nil then return end
+  vim.fn.system('tmux set-option -g status-style "bg=default,fg=white"')
+  vim.fn.system('tmux set-option -g message-style "bg=default,fg=green,bold"')
+  vim.fn.system('tmux set-option -g status-left "#[fg=green,bold] #S "')
+  vim.fn.system('tmux setw -g window-status-style "fg=gray"')
+  vim.fn.system('tmux setw -g window-status-current-style "fg=green,bold"')
+  vim.fn.system('tmux set-option -g pane-active-border-style "fg=green"')
+end
+
+vim.api.nvim_create_autocmd("VimLeave", { callback = reset_tmux_statusbar })
+vim.api.nvim_create_autocmd("FocusLost", { callback = reset_tmux_statusbar })
+vim.api.nvim_create_autocmd("FocusGained", { callback = sync_tmux_statusbar })
 
 -- Highlight yanked lines
 vim.api.nvim_create_augroup("HighlightYank", { clear = true })
@@ -174,7 +239,42 @@ vim.opt.rtp:prepend(lazypath)
 -- LSP keymaps via LspAttach autocmd (replaces on_attach for Nvim 0.11+)
 vim.api.nvim_create_autocmd("LspAttach", {
   callback = function(args)
+    local client = vim.lsp.get_client_by_id(args.data.client_id)
     local bufnr = args.buf
+
+    -- Prevent duplicate hover/diagnostic/completion popups from multiple ruby_lsp
+    -- clients attaching to the same buffer.
+    if client and client.name == "ruby_lsp" then
+      -- ruby_lsp wins: stop any solargraph clients on this buffer
+      local solargraph_clients = vim.lsp.get_clients({ bufnr = bufnr, name = "solargraph" })
+      for _, c in ipairs(solargraph_clients) do
+        c:stop()
+      end
+
+      local ruby_clients = vim.lsp.get_clients({ bufnr = bufnr, name = "ruby_lsp" })
+      if #ruby_clients > 1 then
+        table.sort(ruby_clients, function(a, b) return a.id < b.id end)
+        local primary_id = ruby_clients[1].id
+        for _, c in ipairs(ruby_clients) do
+          if c.id ~= primary_id then
+            c:stop()
+          end
+        end
+        if client.id ~= primary_id then
+          return
+        end
+      end
+    end
+
+    -- If solargraph attaches but ruby_lsp is already active, stop solargraph
+    if client and client.name == "solargraph" then
+      local ruby_lsp_clients = vim.lsp.get_clients({ bufnr = bufnr, name = "ruby_lsp" })
+      if #ruby_lsp_clients > 0 then
+        client:stop()
+        return
+      end
+    end
+
     vim.bo[bufnr].omnifunc = 'v:lua.vim.lsp.omnifunc'
 
     vim.keymap.set("n", "K", vim.lsp.buf.hover, { buffer = bufnr, noremap = true, silent = true })
@@ -196,6 +296,11 @@ vim.api.nvim_create_autocmd("LspAttach", {
 local node_bin_path = "/Users/nsindhe/.nvm/versions/node/v22.14.0/bin"
 vim.env.PATH = node_bin_path .. ":" .. vim.env.PATH
 
+-- rvm Ruby path: inherit PATH from shell (rvm sets it via .zshrc/.bashrc),
+-- ensure ~/.rvm/bin is available as a fallback for rvm-auto-ruby etc.
+local home = os.getenv("HOME") or "/Users/nsindhe"
+vim.env.PATH = home .. "/.rvm/bin:" .. vim.env.PATH
+
 -- LSP server configurations (Nvim 0.11+ vim.lsp.config API)
 vim.lsp.config('clangd', {})
 
@@ -211,6 +316,30 @@ vim.lsp.config('pyright', {
           "/homes/nsindhe/automationScripts/autoRunCiCd",
         },
       },
+    },
+  },
+})
+
+vim.lsp.config('ruby_lsp', {
+  -- Use launcher to handle projects with missing/incompatible gems more gracefully
+  cmd = { 'ruby-lsp', '--use-launcher' },
+  init_options = {
+    formatter = 'auto',
+    linters = { 'rubocop' },
+  },
+})
+
+vim.lsp.config('solargraph', {
+  cmd = { 'solargraph', 'stdio' },
+  settings = {
+    solargraph = {
+      diagnostics = true,
+      completion = true,
+      hover = true,
+      formatting = true,
+      references = true,
+      rename = true,
+      symbols = true,
     },
   },
 })
@@ -234,7 +363,7 @@ vim.lsp.config('lua_ls', {
 })
 
 -- Enable all configured servers
-vim.lsp.enable({ 'clangd', 'vtsls', 'pyright', 'lua_ls' })
+vim.lsp.enable({ 'clangd', 'vtsls', 'pyright', 'lua_ls', 'ruby_lsp', 'solargraph' })
 
 require("lazy").setup({
 
@@ -256,7 +385,7 @@ require("lazy").setup({
     config = function()
       -- Modern nvim-treesitter setup (configs module was removed)
       require('nvim-treesitter').setup({
-        ensure_install = { "xml", "vim", "html", "vimdoc", "query", "robot", "cpp", "javascript", "python", "c", "lua", "rust", "java" },
+        ensure_install = {"ruby", "embedded_template", "xml", "vim", "html", "vimdoc", "query", "robot", "cpp", "javascript", "python", "c", "lua", "rust", "java", "markdown", "markdown_inline" },
         auto_install = true,
       })
 
@@ -304,7 +433,19 @@ require("lazy").setup({
           lualine_a = { "mode" },
           lualine_b = { "branch", "diff" },
           lualine_c = { "filename" },
-          lualine_x = { "diagnostics", "encoding", "filetype" },
+          lualine_x = {
+            {
+              function()
+                local ok, chat = pcall(require, "CopilotChat")
+                if ok then return "󰚩 " .. (chat.config.model or "unknown") end
+                return ""
+              end,
+              cond = function()
+                return pcall(require, "CopilotChat")
+              end,
+            },
+            "diagnostics", "encoding", "filetype",
+          },
           lualine_y = { "progress" },
           lualine_z = { "location" },
         },
@@ -388,6 +529,8 @@ require("lazy").setup({
           typescriptreact = { "prettier" },
           javascript = { "prettier" },
           javascriptreact = { "prettier" },
+          ruby = { "rubocop" },
+          eruby = { "erb_format" },
         },
       })
     end,
@@ -432,6 +575,16 @@ require("lazy").setup({
       { "<leader>aA", "<cmd>Copilot setup<CR>", desc = "Copilot setup/login" },
       { "<leader>aP", "<cmd>Copilot panel<CR>", desc = "Copilot panel" },
       { "<leader>aM", "<cmd>Copilot model<CR>", desc = "Copilot model picker" },
+    },
+  },
+
+  -- render-markdown (pretty markdown rendering in CopilotChat)
+  {
+    "MeanderingProgrammer/render-markdown.nvim",
+    ft = { "copilot-chat" },
+    dependencies = { "nvim-treesitter/nvim-treesitter" },
+    opts = {
+      file_types = { "copilot-chat" },
     },
   },
 
@@ -596,6 +749,18 @@ require("lazy").setup({
         },
       })
     end,
+  },
+
+  -- Rails navigation (:Emodel, :Econtroller, :Eview, :A, gf in partials)
+  {
+    "tpope/vim-rails",
+    ft = { "ruby", "eruby" },
+  },
+
+  -- Auto-close Ruby blocks (def/do/if/class → end)
+  {
+    "tpope/vim-endwise",
+    ft = { "ruby", "eruby" },
   },
 
   -- Netrw (keep for file browsing)
