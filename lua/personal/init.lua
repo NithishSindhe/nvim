@@ -54,6 +54,17 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
+-- JavaScript specific settings (4-space indentation)
+vim.api.nvim_create_autocmd("FileType", {
+  pattern = { "javascript", "javascriptreact" },
+  callback = function()
+    vim.opt_local.shiftwidth = 4
+    vim.opt_local.tabstop = 4
+    vim.opt_local.expandtab = true
+    vim.opt_local.softtabstop = 4
+  end,
+})
+
 -- Ruby specific settings (2-space indentation convention)
 vim.api.nvim_create_autocmd("FileType", {
   pattern = { "ruby", "eruby" },
@@ -277,6 +288,7 @@ vim.api.nvim_create_autocmd("LspAttach", {
 
     vim.bo[bufnr].omnifunc = 'v:lua.vim.lsp.omnifunc'
 
+    vim.keymap.set("n", "gd", vim.lsp.buf.definition, { buffer = bufnr, noremap = true, silent = true, desc = "LSP go to definition" })
     vim.keymap.set("n", "K", vim.lsp.buf.hover, { buffer = bufnr, noremap = true, silent = true })
     vim.keymap.set("n", "<leader>T", vim.lsp.buf.type_definition, { buffer = bufnr, noremap = true, silent = true })
     vim.keymap.set("n", "<leader>vi", vim.lsp.buf.hover, { buffer = bufnr, noremap = true, silent = true })
@@ -508,6 +520,14 @@ require("lazy").setup({
       {
         "<leader>fp",
         function()
+          require("conform").format({ async = true, lsp_fallback = true })
+        end,
+        mode = "n",
+        desc = "Format file with Prettier",
+      },
+      {
+        "<leader>fp",
+        function()
           local start_pos = vim.api.nvim_buf_get_mark(0, "<")
           local end_pos = vim.api.nvim_buf_get_mark(0, ">")
           require("conform").format({
@@ -529,8 +549,20 @@ require("lazy").setup({
           typescriptreact = { "prettier" },
           javascript = { "prettier" },
           javascriptreact = { "prettier" },
+          json = { "prettier" },
+          css = { "prettier" },
+          scss = { "prettier" },
+          html = { "prettier" },
+          yaml = { "prettier" },
+          markdown = { "prettier" },
+          graphql = { "prettier" },
           ruby = { "rubocop" },
           eruby = { "erb_format" },
+        },
+        formatters = {
+          prettier = {
+            prepend_args = { "--single-quote", "--trailing-comma", "all", "--tab-width", "4" },
+          },
         },
       })
     end,
