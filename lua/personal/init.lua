@@ -950,6 +950,26 @@ require("lazy").setup({
     ft = { "ruby", "eruby" },
   },
 
+  -- Git signs + inline blame
+  {
+    "lewis6991/gitsigns.nvim",
+    event = { "BufReadPost", "BufNewFile" },
+    config = function()
+      require("gitsigns").setup({
+        current_line_blame = false,
+        current_line_blame_opts = {
+          virt_text = true,
+          virt_text_pos = "eol",
+          delay = 300,
+        },
+        current_line_blame_formatter = "<author>, <author_time:%Y-%m-%d> - <summary>",
+      })
+    end,
+    keys = {
+      { "<leader>gb", function() require("gitsigns").toggle_current_line_blame() end, desc = "Toggle git line blame" },
+    },
+  },
+
   -- Netrw (keep for file browsing)
   { "vim-scripts/netrw.vim", lazy = true },
 
