@@ -114,6 +114,142 @@ xnoremap("p", "\"_dP")
 nnoremap("y", "\"+y")
 vnoremap("y", "\"+y")
 
+-- ============================================================================
+-- Per-buffer floating scratch window
+-- ============================================================================
+-- State table: source_buf -> { scratch_buf, float_win, start_line, end_line }
+local _float_scratch = {}
+
+local function float_scratch_cleanup(source_buf)
+  local state = _float_scratch[source_buf]
+  if not state then return end
+  if state.scratch_buf and vim.api.nvim_buf_is_valid(state.scratch_buf) then
+    vim.api.nvim_buf_delete(state.scratch_buf, { force = true })
+  end
+  _float_scratch[source_buf] = nil
+end
+
+local function float_scratch_close_win(source_buf)
+  local state = _float_scratch[source_buf]
+  if not state then return end
+  if state.float_win and vim.api.nvim_win_is_valid(state.float_win) then
+    vim.api.nvim_win_close(state.float_win, false) -- false = respect modified warning
+  end
+  state.float_win = nil
+end
+
+local function float_scratch_open_win(source_buf)
+  local state = _float_scratch[source_buf]
+  if not state or not state.scratch_buf or not vim.api.nvim_buf_is_valid(state.scratch_buf) then
+    return
+  end
+  -- Consistent padding: 2 on each side, stick to top, leave space at bottom for statusline
+  local pad = 2
+  local width = vim.o.columns - (pad * 2)
+  local height = vim.o.lines - pad - 5  -- leave ~5 rows at bottom for filename/statusline
+  if width < 10 then width = 10 end
+  if height < 5 then height = 5 end
+
+  local win = vim.api.nvim_open_win(state.scratch_buf, true, {
+    relative = "editor",
+    row = pad,
+    col = pad,
+    width = width,
+    height = height,
+    border = "rounded",
+    zindex = 10,
+  })
+  state.float_win = win
+
+  -- Show original line numbers via statuscolumn
+  local offset = state.start_line - 1
+  vim.wo[win].number = true
+  vim.wo[win].relativenumber = false
+  vim.wo[win].statuscolumn = '%=' .. (offset > 0
+    and ('%{v:lnum + ' .. offset .. '}')
+    or '%l') .. ' '
+  vim.wo[win].signcolumn = "no"
+  vim.wo[win].cursorline = true
+end
+
+vim.keymap.set("v", "<leader>sw", function()
+  -- Exit visual mode to update '< and '> marks
+  vim.cmd('noautocmd normal! \27')
+  local source_buf = vim.api.nvim_get_current_buf()
+  local start_line = vim.fn.line("'<")
+  local end_line = vim.fn.line("'>")
+
+  -- Get selected lines directly from buffer (no register gymnastics)
+  local lines = vim.api.nvim_buf_get_lines(source_buf, start_line - 1, end_line, false)
+  if #lines == 0 then return end
+
+  -- Clean up any existing float for this buffer
+  float_scratch_cleanup(source_buf)
+
+  local ft = vim.bo[source_buf].filetype
+
+  -- Create scratch buffer
+  local scratch_buf = vim.api.nvim_create_buf(false, true)
+  vim.api.nvim_buf_set_lines(scratch_buf, 0, -1, false, lines)
+  vim.bo[scratch_buf].filetype = ft
+  vim.bo[scratch_buf].buftype = "acwrite" -- enables BufWriteCmd
+  vim.bo[scratch_buf].bufhidden = "hide"
+  vim.bo[scratch_buf].modified = false
+
+  -- Store state
+  _float_scratch[source_buf] = {
+    scratch_buf = scratch_buf,
+    float_win = nil,
+    start_line = start_line,
+    end_line = end_line,
+  }
+
+  -- Open the floating window
+  float_scratch_open_win(source_buf)
+
+  -- Write-back: :w in scratch writes to the source buffer's original selection
+  vim.api.nvim_create_autocmd("BufWriteCmd", {
+    buffer = scratch_buf,
+    callback = function()
+      local st = _float_scratch[source_buf]
+      if not st or not vim.api.nvim_buf_is_valid(source_buf) then
+        vim.notify("Source buffer no longer exists", vim.log.levels.ERROR)
+        return
+      end
+      local new_lines = vim.api.nvim_buf_get_lines(scratch_buf, 0, -1, false)
+      vim.api.nvim_buf_set_lines(source_buf, st.start_line - 1, st.end_line, false, new_lines)
+      -- Update end_line in case line count changed
+      st.end_line = st.start_line + #new_lines - 1
+      vim.bo[scratch_buf].modified = false
+      -- Also write the source file to disk
+      vim.api.nvim_buf_call(source_buf, function()
+        vim.cmd("write")
+      end)
+      vim.notify("Written back to source (lines " .. st.start_line .. "-" .. st.end_line .. ")")
+    end,
+  })
+
+  -- :q to close — works naturally; buftype=acwrite warns on unsaved changes
+  -- Override QuitPre so :q cleans up state properly
+  vim.api.nvim_create_autocmd("QuitPre", {
+    buffer = scratch_buf,
+    callback = function()
+      vim.schedule(function()
+        float_scratch_cleanup(source_buf)
+      end)
+    end,
+  })
+
+  -- Cleanup when source buffer is wiped
+  vim.api.nvim_create_autocmd("BufWipeout", {
+    buffer = source_buf,
+    once = true,
+    callback = function()
+      float_scratch_cleanup(source_buf)
+    end,
+  })
+end, { desc = "Show selection in floating scratch window" })
+
 -- Utility mappings
 nnoremap("<leader>c", "<cmd>nohlsearch<CR>")
 nnoremap("<leader>d",[[<cmd>bd<CR>]])
@@ -767,7 +903,7 @@ require("lazy").setup({
           },
         })
       end, desc = "Live grep" },
-      { "<leader>fb", function() require('telescope.builtin').buffers() end, desc = "Buffers" },
+      { "<leader>fb", function() require('telescope.builtin').buffers({ sort_mru = true, select_current = true }) end, desc = "Buffers" },
       { "<leader>fh", "<cmd>Telescope harpoon marks<CR>", desc = "Harpoon marks" },
       { "<leader>go", function() require("telescope.builtin").live_grep({ grep_open_files = true }) end, desc = "Grep open files" },
     },
