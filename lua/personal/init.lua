@@ -510,8 +510,17 @@ vim.lsp.config('lua_ls', {
   },
 })
 
+vim.lsp.config('perlnavigator', {
+  cmd = { 'perlnavigator' },
+  settings = {
+    perlnavigator = {
+      enableWarnings = true,
+    },
+  },
+})
+
 -- Enable all configured servers
-vim.lsp.enable({ 'clangd', 'vtsls', 'pyright', 'lua_ls', 'ruby_lsp', 'solargraph' })
+vim.lsp.enable({ 'clangd', 'vtsls', 'pyright', 'lua_ls', 'ruby_lsp', 'solargraph', 'perlnavigator' })
 
 require("lazy").setup({
 
