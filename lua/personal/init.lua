@@ -950,6 +950,17 @@ require("lazy").setup({
     ft = { "ruby", "eruby" },
   },
 
+  -- which-key (shows keybinding popup when you press leader or any prefix)
+  {
+    "folke/which-key.nvim",
+    event = "VeryLazy",
+    config = function()
+      require("which-key").setup({
+        delay = 300,
+      })
+    end,
+  },
+
   -- Git signs + inline blame
   {
     "lewis6991/gitsigns.nvim",
