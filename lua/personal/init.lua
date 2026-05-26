@@ -589,7 +589,11 @@ require("lazy").setup({
         sections = {
           lualine_a = { "mode" },
           lualine_b = { "branch", "diff" },
-          lualine_c = { "filename" },
+          lualine_c = {
+            "filename",
+            { function() return require("nvim-navic").get_location() end,
+              cond = function() return require("nvim-navic").is_available() end },
+          },
           lualine_x = {
             {
               function()
@@ -987,6 +991,16 @@ require("lazy").setup({
     end,
     keys = {
       { "<leader>gb", function() require("gitsigns").toggle_current_line_blame() end, desc = "Toggle git line blame" },
+    },
+  },
+
+  -- Breadcrumbs (Class > method > block) via LSP
+  {
+    "SmiteshP/nvim-navic",
+    event = "LspAttach",
+    opts = {
+      lsp = { auto_attach = true },
+      highlight = true,
     },
   },
 
