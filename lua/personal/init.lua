@@ -991,6 +991,11 @@ require("lazy").setup({
     end,
     keys = {
       { "<leader>gb", function() require("gitsigns").toggle_current_line_blame() end, desc = "Toggle git line blame" },
+      { "]c", function() require("gitsigns").next_hunk() end, desc = "Next git change" },
+      { "[c", function() require("gitsigns").prev_hunk() end, desc = "Prev git change" },
+      { "<leader>gr", function() require("gitsigns").reset_hunk() end, desc = "Reset git hunk" },
+      { "<leader>gr", function() require("gitsigns").reset_hunk({ vim.fn.line("'<"), vim.fn.line("'>") }) end, mode = "v", desc = "Reset selected git changes" },
+      { "<leader>gR", function() require("gitsigns").reset_buffer() end, desc = "Reset entire buffer to HEAD" },
     },
   },
 
