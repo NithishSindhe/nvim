@@ -253,6 +253,11 @@ end, { desc = "Show selection in floating scratch window" })
 -- Utility mappings
 nnoremap("<leader>c", "<cmd>nohlsearch<CR>")
 nnoremap("<leader>d",[[<cmd>bd<CR>]])
+vim.keymap.set("n", "<leader>fc", function()
+  local path = vim.fn.expand("%:.")  -- path relative to cwd
+  vim.fn.setreg("+", path)
+  vim.notify("Copied: " .. path)
+end, { desc = "Copy relative file path to clipboard" })
 vim.api.nvim_set_keymap('n', '<C-l>', ':normal zz<CR>', opts)
 
 -- Custom highlights applied via ColorScheme autocmd so they persist after theme loads
